@@ -42,6 +42,20 @@ module escrow::Escrow {
         coin::deposit<T>(taker_addr, offered_coin);
     }
 
+    public entry fun close_escrow<T, Y>(offeror: &signer) acquires Escrow {
+        let offeror_addr = signer::address_of(offeror);
+        let escrow = move_from<Escrow<T, Y>>(offeror_addr);
+        let Escrow {
+            offered_coin: offered_coin,
+            expected_coin: expected_coin,
+            offered_amount: _,
+            expected_amount: _,
+        } = escrow;
+
+        coin::deposit<Y>(offeror_addr, expected_coin);
+        coin::deposit<T>(offeror_addr, offered_coin);
+    }
+
     #[test_only]
     struct FakeCoinA {}
 
@@ -82,7 +96,7 @@ module escrow::Escrow {
     }
 
     #[test]
-    fun test_take_offer() acquires Escrow {
+    fun test_all_escrow_flow() acquires Escrow {
         let root = create_account_for_test(@escrow);
         let offeror = create_account_for_test(@0xC0FEEE);
 
@@ -93,6 +107,7 @@ module escrow::Escrow {
         let addr = signer::address_of(&offeror);
         managed_coin::mint<FakeCoinA>(&root, addr, 1000);
 
+        // someone offering
         offer<FakeCoinA, FakeCoinB>(&offeror, 1000, 50);
         let expected_amount = borrow_global<Escrow<FakeCoinA, FakeCoinB>>(addr).expected_amount;
         assert!(expected_amount == 50, 0);
@@ -103,7 +118,7 @@ module escrow::Escrow {
         let after_offer_balance = coin::balance<FakeCoinA>(addr);
         assert!(after_offer_balance == 0, 0);
 
-        // ---
+        // someone taking the offer
         let taker = create_account_for_test(@0xCAFE);
 
         coin::register<FakeCoinA>(&taker);
@@ -121,5 +136,13 @@ module escrow::Escrow {
 
         let escrow = borrow_global<Escrow<FakeCoinA, FakeCoinB>>(addr);
         assert!(coin::value<FakeCoinB>(&escrow.expected_coin) == 50, 0);
+
+        // offeror close the offer and claiming back anything inside it
+        close_escrow<FakeCoinA, FakeCoinB>(&offeror);
+        let after_close_offeror_a = coin::balance<FakeCoinA>(offeror_addr);
+        assert!(after_close_offeror_a == 0, 01);
+
+        let after_close_offeror_b = coin::balance<FakeCoinB>(offeror_addr);
+        assert!(after_close_offeror_b == 50, 01);
     }
 }
