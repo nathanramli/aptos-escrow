@@ -1,0 +1,10 @@
+[package]
+name = 'escrow'
+version = '1.0.0'
+
+[addresses]
+escrow = "0xE5C1200"
+
+
+[dependencies]
+AptosFramework = {git = 'https://github.com/aptos-labs/aptos-core.git', rev = 'devnet', subdir = 'aptos-move/framework/aptos-framework'}
