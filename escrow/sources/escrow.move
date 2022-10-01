@@ -1,5 +1,4 @@
 module escrow::Escrow {
-    #[test_only]
     use std::signer;
     // #[test_only]
     // use aptos_std::debug;
